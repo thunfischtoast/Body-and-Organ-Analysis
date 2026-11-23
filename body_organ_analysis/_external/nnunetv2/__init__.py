@@ -21,6 +21,14 @@ Modifications:
       of one per worker. Forking the multithreaded Celery worker could
       deadlock the Manager child and hang the task.
 
+    - nnunetv2/utilities/utils.py
+
+      create_lists_from_splitted_dataset_folder matches the file names serially
+      instead of in a fork-based Pool of 12 processes, and its num_processes
+      parameter was removed. The Pool forked the multithreaded Celery worker at
+      the start of every prediction; a child stuck after the fork kept Celery's
+      SIGTERM handler, survived Pool.terminate() and hung the task.
+
 nnU-Net is licensed under the Apache License, Version 2.0.
 
 A copy of the Apache License 2.0 should be included with this project.

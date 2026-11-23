@@ -21,7 +21,6 @@ import numpy as np
 import re
 
 from nnunetv2.paths import nnUNet_raw
-from multiprocessing import Pool
 
 
 def get_identifiers_from_splitted_dataset_folder(folder: str, file_ending: str):
@@ -39,7 +38,7 @@ def create_paths_fn(folder, files, file_ending, f):
     return [join(folder, i) for i in files if p.fullmatch(i)]
 
 
-def create_lists_from_splitted_dataset_folder(folder: str, file_ending: str, identifiers: List[str] = None, num_processes: int = 12) -> List[
+def create_lists_from_splitted_dataset_folder(folder: str, file_ending: str, identifiers: List[str] = None) -> List[
     List[str]]:
     """
     does not rely on dataset.json
@@ -47,13 +46,11 @@ def create_lists_from_splitted_dataset_folder(folder: str, file_ending: str, ide
     if identifiers is None:
         identifiers = get_identifiers_from_splitted_dataset_folder(folder, file_ending)
     files = subfiles(folder, suffix=file_ending, join=False, sort=True)
-    list_of_lists = []
-
-    params_list = [(folder, files, file_ending, f) for f in identifiers]
-    with Pool(processes=num_processes) as pool:
-        list_of_lists = pool.starmap(create_paths_fn, params_list)
-        
-    return list_of_lists
+    # Serial on purpose: this only matches file names, and a fork-based Pool here
+    # forked the multithreaded Celery worker at the start of every prediction. A
+    # child stuck on an inherited lock kept Celery's SIGTERM handler, so the pool's
+    # terminate() could not end it and the task hung.
+    return [create_paths_fn(folder, files, file_ending, f) for f in identifiers]
 
 
 def get_filenames_of_train_images_and_targets(raw_dataset_folder: str, dataset_json: dict = None):
